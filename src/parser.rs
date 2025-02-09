@@ -339,8 +339,14 @@ fn decode_block(slice: &[u8], compressed_size: usize, decompressed_size: usize) 
 
 	let decompressed = match compress_method {
 		0 => compressed,
-		1 => minilzo::decompress(&compressed, decompressed_size)
-			.or(Err(Error::InvalidData))?,
+		1 => {
+			let mut decompressed = vec![0; decompressed_size];
+			let (result, err) = rust_lzo::LZOContext::decompress_to_slice(&compressed, &mut decompressed);
+			if err != rust_lzo::LZOError::OK {
+				return Err(Error::InvalidData);
+			}
+			Vec::from(result)
+		},
 		2 => {
 			let mut v = vec![];
 			zlib::Decoder::new(&compressed[..]).read_to_end(&mut v)
